@@ -9,29 +9,29 @@
 
 <p align="center"><img src="Resources/Thumbnail.png" alt="Deferred Rendering — G-buffer와 렌더링 최적화 발표 자료" width="100%"></p>
 
+부경대학교 프로그래밍 동아리 GDC에서 Deferred Rendering을 주제로 발표한 자료입니다. Forward Rendering에서 계산이 낭비되는 지점을 짚고, Deferred Rendering이 이를 어떻게 줄이는지 설명한 뒤, C++과 Direct3D 11로 직접 만든 벤치마크에서 두 방식을 같은 조건으로 비교했습니다.
+
+발표는 렌더링과 빛, 재질에 대한 배경지식에서 시작해 Forward Rendering의 한계, Deferred Rendering의 2단계 구조와 G-buffer 최적화로 이어집니다. 후반부에서는 조명 개수와 그리기 순서를 바꿔 가며 측정한 결과로 "Deferred가 항상 빠른가?"라는 질문에 답하고, 마지막으로 Deferred Rendering의 한계인 안티앨리어싱과 반투명 물체 처리를 해결 방안과 함께 다뤘습니다.
+
 ## Contents
 
-- [프로젝트 소개](#프로젝트-소개)
 - [Forward Rendering의 한계](#forward-rendering의-한계)
 - [Deferred Rendering](#deferred-rendering)
 - [G-buffer 최적화](#g-buffer-최적화)
 - [성능 비교](#성능-비교)
 - [Early-Z와 그리기 순서](#early-z와-그리기-순서)
+- [결론](#결론)
 - [안티앨리어싱](#안티앨리어싱)
 - [반투명 물체 처리](#반투명-물체-처리)
 - [발표 자료](#발표-자료)
-
-## 프로젝트 소개
-
-부경대학교 프로그래밍 동아리 GDC에서 발표한 렌더링 자료입니다. 같은 창고 장면을 Direct3D 11로 그리면서 광원 수와 물체를 그리는 순서를 바꿉니다. 기본 조명과 작업등이 많은 장면을 비교하면, 표면 정보를 G-buffer에 한 번 더 기록하는 비용이 언제 조명 계산에서 절약한 시간보다 커지는지 볼 수 있습니다.
 
 ## Forward Rendering의 한계
 
 3D 물체를 그리려면 픽셀마다 위치와 색을 정해야 하고, 색을 정하려면 빛과 법선 벡터, 거칠기(Roughness)·금속성(Metallic)·발광(Emission) 같은 재질 정보가 필요합니다. 언리얼 엔진 4의 PBR 수식처럼 이 계산은 무겁고, 1280×720 화면을 초당 60장 그리면 초당 약 5,530만 픽셀을 칠하게 됩니다.
 
-![작은 상자 위에 큰 상자가 차례로 그려지면서 앞서 그린 부분이 가려지는 세 장면을 보여주는 발표 슬라이드](Resources/Forward-Overdraw.png)
-
 Forward Rendering은 모델마다 위치 변환 → 픽셀 색상 계산 → 깊이·스텐실 테스트와 블렌딩으로 이어지는 파이프라인을 한 번씩 수행합니다. 즉 물체를 그리면서 재질과 조명을 함께 계산하므로, 광원이 많으면 픽셀 셰이더 단계가 병목이 됩니다. 게다가 나중에 다른 모델에 가려질 픽셀의 색상까지 미리 계산하게 됩니다.
+
+<p align="center"><img src="Resources/Forward-Overdraw.png" alt="작은 상자 위에 큰 상자가 차례로 그려지면서 앞서 그린 부분이 가려지는 세 장면을 보여주는 발표 슬라이드" width="840"></p>
 
 *발표 자료 17쪽 — 앞서 계산한 픽셀이 다음 모델에 가려지는 과정*
 
@@ -42,21 +42,21 @@ Deferred Rendering은 불투명 물체를 두 단계로 나눠 그립니다.
 1. 표면 정보를 G-buffer에 기록합니다. 깊이 테스트를 거치면 픽셀마다 맨 앞 표면의 법선과 재질만 남습니다.
 2. 저장한 표면에 조명을 적용합니다. 각 픽셀에 영향을 주는 광원의 빛을 더합니다.
 
-![법선, 색상과 거칠기, 금속과 차폐광, 깊이를 기록한 G-buffer 디버그 화면과 이를 이용해 색상을 계산한 구 렌더링 결과를 나란히 보여주는 발표 슬라이드](Resources/G-Buffer-Result.png)
-
 뒤에 가려진 표면은 조명 계산을 건너뛰므로, 무거운 빛과 재질 수식은 화면에 실제로 보이는 표면에만 적용됩니다.
+
+<p align="center"><img src="Resources/G-Buffer-Result.png" alt="법선, 색상과 거칠기, 금속과 차폐광, 깊이를 기록한 G-buffer 디버그 화면과 이를 이용해 색상을 계산한 구 렌더링 결과를 나란히 보여주는 발표 슬라이드" width="840"></p>
 
 *발표 자료 19쪽 — G-buffer에 기록한 기하 정보와 이를 이용해 계산한 최종 화면*
 
-![Forward Rendering은 그리면서 조명을 계산하고 Deferred Rendering은 기하 계산만 반복한 뒤 보이는 표면에만 조명을 적용하는 파이프라인 비교 슬라이드](Resources/Forward-vs-Deferred-Pipeline.png)
+<p align="center"><img src="Resources/Forward-vs-Deferred-Pipeline.png" alt="Forward Rendering은 그리면서 조명을 계산하고 Deferred Rendering은 기하 계산만 반복한 뒤 보이는 표면에만 조명을 적용하는 파이프라인 비교 슬라이드" width="840"></p>
 
 *발표 자료 23쪽 — Forward는 그리면서 조명을 계산하고, Deferred는 보이는 표면만 조명*
 
 ## G-buffer 최적화
 
-![Normal, AlbedoRoughness, MetallicAO, Depth 네 개의 G-buffer 디버그 화면에 각각 어떤 정보를 담았는지 표시한 발표 슬라이드](Resources/G-Buffer-Layout.png)
-
 G-buffer는 모든 모델이 기록하는 대상이라 버퍼가 커질수록 메모리에 쓰고 읽을 데이터도 늘어납니다. 구현한 렌더러는 법선, 색상+거칠기, 금속성+차폐광, 깊이의 네 가지 버퍼만 사용하고, MRT(Multiple Render Targets)로 드로우 한 번에 여러 버퍼에 기록합니다.
+
+<p align="center"><img src="Resources/G-Buffer-Layout.png" alt="Normal, AlbedoRoughness, MetallicAO, Depth 네 개의 G-buffer 디버그 화면에 각각 어떤 정보를 담았는지 표시한 발표 슬라이드" width="840"></p>
 
 *발표 자료 20쪽 — 직접 구현한 렌더러의 G-buffer 디버그 패널*
 
@@ -87,9 +87,9 @@ G-buffer는 모든 모델이 기록하는 대상이라 버퍼가 커질수록 �
 
 ## 성능 비교
 
-![선반과 상자가 늘어선 물류창고 통로를 작업등 128개로 비춘 실제 렌더 화면](Resources/Warehouse-Scene.png)
-
 설명만 들으면 Deferred가 더 좋아 보이지만, Deferred는 G-buffer를 쓰고 다시 읽는 추가 비용이 있습니다. 실제로도 항상 빠른지 확인하기 위해 같은 장면을 두 방식으로 렌더링하는 벤치마크를 만들었습니다.
+
+<p align="center"><img src="Resources/Warehouse-Scene.png" alt="선반과 상자가 늘어선 물류창고 통로를 작업등 128개로 비춘 실제 렌더 화면" width="840"></p>
 
 *발표 자료 28쪽 — 작업등 128개를 켠 물류창고 실험 장면*
 
@@ -212,7 +212,12 @@ Early-Z는 가려진 픽셀을 깊이 테스트로 미리 걸러 셰이더 실�
 
 가까운 순서로 그리니 작업등 128개에서 Forward가 1.581 ms에서 1.234 ms로 줄었지만, 같은 순서의 Deferred(0.784 ms)가 여전히 빨랐습니다. 작업등을 끄면 두 순서 모두 Forward가 빨랐습니다.
 
-기본 조명에서는 G-buffer를 쓰고 읽는 비용이 커서 Forward가 빨랐습니다. 작업등이 많은 장면에서는 각 광원이 비추는 영역만 계산한 라이트 볼륨 Deferred가 빨랐습니다.
+## 결론
+
+- 조명이 가벼운 기본 화면에서는 Forward가 유리했습니다. G-buffer를 쓰고 읽는 비용이 조명 계산보다 컸기 때문입니다.
+- 작업등이 많은 화면에서는 라이트 볼륨 Deferred가 유리했습니다. Forward는 픽셀마다 모든 조명을 확인하지만, Deferred는 볼륨이 덮는 화면 영역만 처리합니다. G-buffer 비용을 포함해도 Deferred가 빨랐습니다.
+
+즉, 픽셀 셰이더가 비쌀수록 Deferred가 성능적으로 유리할 가능성이 높습니다. 단, 이 결과는 위 환경의 불투명 창고 장면에서 얻은 값이며 조명 반경과 중첩, 해상도, 드로우 순서에 따라 달라질 수 있습니다.
 
 ## 안티앨리어싱
 
@@ -225,7 +230,7 @@ Early-Z는 가려진 픽셀을 깊이 테스트로 미리 걸러 셰이더 실�
 3. 엣지의 방향을 이용해 대비가 높은 픽셀을 선택합니다.
 4. 오프셋을 계산해 주변 픽셀과 섞습니다.
 
-![구 렌더링 결과에서 FXAA가 탐색한 경계를 빨간색으로 표시한 화면과 FXAA의 네 단계를 정리한 발표 슬라이드](Resources/FXAA-Edge-Detection.png)
+<p align="center"><img src="Resources/FXAA-Edge-Detection.png" alt="구 렌더링 결과에서 FXAA가 탐색한 경계를 빨간색으로 표시한 화면과 FXAA의 네 단계를 정리한 발표 슬라이드" width="840"></p>
 
 *발표 자료 37쪽 — FXAA가 색상 차이로 찾아낸 경계(빨간색)*
 
@@ -266,7 +271,7 @@ FXAA는 최종 색상에서 경계를 찾으므로 G-buffer에 추가 샘플을 
   </tbody>
 </table>
 
-![디더링 강도를 달리해 반투명하게 표현한 세 개의 상자를 보여주는 발표 슬라이드](Resources/Dithering-Transparency.png)
+<p align="center"><img src="Resources/Dithering-Transparency.png" alt="디더링 강도를 달리해 반투명하게 표현한 세 개의 상자를 보여주는 발표 슬라이드" width="840"></p>
 
 *발표 자료 42쪽 — 디더링으로 근사한 반투명 효과*
 
