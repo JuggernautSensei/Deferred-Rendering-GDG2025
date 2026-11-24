@@ -46,60 +46,16 @@ G-buffer는 모든 물체가 쓰고 조명 단계가 다시 읽으므로, 커질
 
 ![선반과 상자가 늘어선 물류창고 통로를 작업등 128개로 비춘 실험 장면](Resources/Warehouse-Scene.png)
 
-Deferred는 G-buffer를 쓰고 다시 읽는 비용이 추가됩니다. 실제로 항상 빠른지 확인하려고 같은 창고 장면을 두 방식으로 그리고 작업등 수를 바꿔 GPU 시간을 쟀습니다.
+같은 창고 장면을 Forward와 Deferred로 그리면서 작업등 수에 따른 GPU 시간을 비교했습니다. 측정 환경은 RTX 4060 Laptop GPU, 1280×720입니다.
 
-* Forward: 단일 패스. 픽셀 셰이더가 실행될 때마다 모든 조명의 범위를 확인합니다.
-* Deferred: G-buffer를 기록한 뒤, 광원마다 구형 라이트 볼륨을 그려 덮인 픽셀의 위치를 깊이로 복원하고 반경 안이면 빛을 더합니다.
+| 작업등 | Forward | Deferred |
+| --- | ---: | ---: |
+| 꺼짐 | 0.152 ms | 0.169 ms |
+| 8개 | 0.177 ms | 0.193 ms |
+| 32개 | 0.383 ms | 0.307 ms |
+| 128개 | 1.234 ms | 0.784 ms |
 
-RTX 4060 Laptop GPU, 1280×720에서 불투명 도형 2,556개를 같은 PBR 재질로 그렸습니다. 깊이 프리패스, 그림자, MSAA, 타일 컬링은 쓰지 않았고, 12프레임 워밍업 뒤 30프레임 × 6라운드를 3회 실행한 중앙값입니다. 두 결과 이미지의 차이는 8비트 채널 기준 최대 1입니다.
-
-<table width="100%">
-  <thead>
-    <tr>
-      <th align="left">작업등</th>
-      <th align="right">Forward</th>
-      <th align="right">Deferred</th>
-      <th align="right">Deferred의 G-buffer</th>
-      <th align="right">Deferred의 조명 + 합성</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>꺼짐</td>
-      <td align="right">0.152 ms</td>
-      <td align="right">0.169 ms</td>
-      <td align="right">0.156 ms</td>
-      <td align="right">0.013 ms</td>
-    </tr>
-    <tr>
-      <td>8개</td>
-      <td align="right">0.177 ms</td>
-      <td align="right">0.193 ms</td>
-      <td align="right">—</td>
-      <td align="right">—</td>
-    </tr>
-    <tr>
-      <td>32개</td>
-      <td align="right">0.383 ms</td>
-      <td align="right">0.307 ms</td>
-      <td align="right">0.146 ms</td>
-      <td align="right">0.162 ms</td>
-    </tr>
-    <tr>
-      <td>128개</td>
-      <td align="right">1.234 ms</td>
-      <td align="right">0.784 ms</td>
-      <td align="right">0.147 ms</td>
-      <td align="right">0.637 ms</td>
-    </tr>
-  </tbody>
-</table>
-
-조명이 없거나 적을 때는 Forward가 빨랐습니다. Forward는 표면 색을 바로 출력하지만, Deferred는 조명이 없어도 G-buffer 기록 비용(약 0.15 ms)을 그대로 냅니다. 측정한 조건 중 작업등 32개와 128개에서는 Deferred가 빨랐습니다. 128개에서는 Forward 1.234 ms → Deferred 0.784 ms로 36.4% 줄었습니다. Forward는 셰이더가 실행된 모든 픽셀에서 모든 조명을 확인하지만, Deferred는 라이트 볼륨이 덮은 픽셀만 처리하기 때문입니다. G-buffer 시간은 조명 수와 관계없이 일정했고, 늘어난 비용은 조명 단계에만 쌓였습니다.
-
-Forward의 낭비가 가려진 픽셀에서 온다면, 가까운 물체부터 그려 Early-Z가 가려진 픽셀을 미리 걸러 내게 하면 차이가 줄 수 있습니다. 위 표는 가까운 순서로 그린 결과이고, 같은 조건에서 먼 순서로 그리면 작업등 128개의 Forward는 1.581 ms였습니다. 가까운 순서로 바꾸자 Forward의 픽셀 셰이더 호출이 1,934,731회에서 1,625,127회로 약 16% 줄고 시간도 1.581 ms → 1.234 ms로 줄었지만, 여전히 Deferred(0.784 ms)보다 느렸습니다.
-
-이 실험에서 성능을 가른 것은 G-buffer를 기록하고 읽는 비용과, 조명을 계산할 픽셀을 라이트 볼륨으로 줄인 효과였습니다. 가까운 물체부터 그리면 Forward의 가려진 픽셀 계산도 줄지만, 실행된 픽셀 셰이더가 모든 광원의 범위를 확인하는 비용은 남습니다. 조명 반경과 중첩, 해상도가 달라지면 두 방식의 성능 차이도 달라집니다.
+작업등이 없거나 8개일 때는 G-buffer를 기록하는 비용 때문에 Forward가 빨랐습니다. 작업등이 32개와 128개일 때는 광원마다 라이트 볼륨 안의 픽셀에만 조명을 계산한 Deferred가 빨랐습니다. 작업등 128개에서는 Deferred의 GPU 시간이 Forward보다 **36.4% 짧았습니다.**
 
 ## Deferred의 한계
 
