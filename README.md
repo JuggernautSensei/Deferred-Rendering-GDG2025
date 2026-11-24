@@ -1,6 +1,6 @@
 <h1 align="center">Deferred Rendering 소개</h1>
 
-<p align="center">C++과 Direct3D 11로 Forward와 Deferred 렌더링을 비교한 발표 자료</p>
+<p align="center">Deferred 렌더링의 원리와 한계, 해결 방안을 다룬 GDG 2025 발표 자료</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/C++-00599C?logo=cplusplus&logoColor=white" alt="C++">
