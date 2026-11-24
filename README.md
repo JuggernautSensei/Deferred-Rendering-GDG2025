@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Direct3D-11-5E9C36" alt="Direct3D 11">
 </p>
 
-![Deferred Rendering 발표 자료 표지](Resources/Thumbnail.png)
+<p align="center"><img src="Resources/Thumbnail.png" alt="Deferred Rendering 발표 자료 표지"></p>
 
 ## Contents
 
